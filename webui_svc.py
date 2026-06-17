@@ -16,7 +16,6 @@ from preprocess.pipeline import PreprocessPipeline
 from soulxsinger.utils.file_utils import load_config
 from cli.inference_svc import build_model as build_svc_model, process as svc_process
 
-
 ROOT = Path(__file__).parent
 SAMPLE_RATE = 44100
 PROMPT_MAX_SEC_DEFAULT = 30

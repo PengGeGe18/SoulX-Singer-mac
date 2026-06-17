@@ -320,7 +320,9 @@ class RMVPE:
             n_pad = 32 * ((n_frames - 1) // 32 + 1) - n_frames
             if n_pad > 0:
                 mel = F.pad(mel, (0, n_pad), mode="constant")
-            mel = mel.half() if self.is_half else mel.float()
+            # Convert mel to same dtype as model
+            model_dtype = next(self.model.parameters()).dtype
+            mel = mel.to(model_dtype)
             hidden = self.model(mel)
             return hidden[:, :n_frames]
 
@@ -381,7 +383,7 @@ class F0Extractor:
         model_path: str,
         device: str = "cpu",
         *,
-        is_half: bool = False,
+        is_half: bool = None,
         input_sr: int = 16000,
         target_sr: int = 24000,
         hop_size: int = 480,
@@ -394,7 +396,7 @@ class F0Extractor:
         Args:
             model_path: Path to RMVPE checkpoint.
             device: Torch device string, e.g. ``"cuda:0"`` / ``"cpu"``.
-            is_half: Whether to run the model in fp16.
+            is_half: Whether to run the model in fp16. If None, auto-detect based on device.
             input_sr: Input resample rate used by RMVPE frontend.
             target_sr: Target sample rate for the output f0 grid.
             hop_size: Target hop size for the output f0 grid.
@@ -410,6 +412,10 @@ class F0Extractor:
         self.thred = thred
 
         self.verbose = verbose
+        
+        # Auto-detect is_half based on device if not specified
+        if is_half is None:
+            is_half = torch.cuda.is_available()  # Only use half precision on CUDA
 
         self.model = RMVPE(model_path, is_half=is_half, device=device)
 

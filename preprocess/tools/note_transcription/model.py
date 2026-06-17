@@ -156,6 +156,13 @@ def infer_sample(
     # Re-calculate non_padding bool mask
     mel_nonpadding = mel.abs().sum(-1) > 0
 
+    # Ensure mel tensors have the same dtype as the model
+    model_dtype = next(model.parameters()).dtype
+    mel = mel.to(model_dtype)
+    
+    # Note: pitch_coarse and uv_t are index tensors used in embedding layers,
+    # so they must remain Long type (not converted to model dtype)
+
     # ---- Word Boundary ----
     word_durs_used = None
     if apply_rwbd_:

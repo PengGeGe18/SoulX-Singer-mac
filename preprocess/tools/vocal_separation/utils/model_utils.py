@@ -81,8 +81,17 @@ def demix(
     batch_size = config.inference.batch_size
 
     use_amp = getattr(config.training, 'use_amp', True)
+    # Determine which autocast to use
+    if torch.cuda.is_available():
+        autocast_context = torch.cuda.amp.autocast(enabled=use_amp)
+    else:
+        # MPS and CPU don't support autocast well, disable it
+        autocast_context = torch.cuda.amp.autocast(enabled=False)
+    
+    # Get model's dtype for input consistency
+    model_dtype = next(model.parameters()).dtype
 
-    with torch.cuda.amp.autocast(enabled=use_amp):
+    with autocast_context:
         with torch.inference_mode():
             # Initialize result and counter tensors
             req_shape = (num_instruments,) + mix.shape
@@ -101,7 +110,7 @@ def demix(
 
             while i < mix.shape[1]:
                 # Extract chunk and apply padding if necessary
-                part = mix[:, i:i + chunk_size].to(device)
+                part = mix[:, i:i + chunk_size].to(device).to(model_dtype)
                 chunk_len = part.shape[-1]
                 if mode == "generic" and chunk_len > chunk_size // 2:
                     pad_mode = "reflect"
